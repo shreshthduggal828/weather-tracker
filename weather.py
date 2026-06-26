@@ -1,7 +1,44 @@
 import os
+os.environ['MPLBACKEND'] = 'Agg'
 import requests
 import pandas as pd
 from datetime import date
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+def generate_dashboard():
+    df = pd.read_csv("daily_log.csv", skipinitialspace=True)
+    df["datetime"] = pd.to_datetime(df["time"])
+    df = df.sort_values("datetime")
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(df["datetime"], df["temp_f"], color="steelblue",
+            linewidth=2, marker='o', markersize=5, label="Temp (°F)")
+    max_idx = df["temp_f"].idxmax()
+    min_idx = df["temp_f"].idxmin()
+
+    ax.scatter(df.loc[max_idx, "datetime"], df.loc[max_idx, "temp_f"],
+               color="red", zorder=5, label=f"Max: {df.loc[max_idx, 'temp_f']}°F")
+    ax.scatter(df.loc[min_idx, "datetime"], df.loc[min_idx, "temp_f"],
+               color="blue", zorder=5, label=f"Min: {df.loc[min_idx, 'temp_f']}°F")
+    ax.annotate(f"Max: {df.loc[max_idx, 'temp_f']}°F",
+                xy=(df.loc[max_idx, "datetime"], df.loc[max_idx, "temp_f"]),
+                xytext=(10, 10), textcoords="offset points",
+                color="red", fontsize=9)
+    ax.annotate(f"Min: {df.loc[min_idx, 'temp_f']}°F",
+                xy=(df.loc[min_idx, "datetime"], df.loc[min_idx, "temp_f"]),
+                xytext=(10, -15), textcoords="offset points",
+                color="blue", fontsize=9)
+
+    ax.set_ylim(df["temp_f"].min() - 5, df["temp_f"].max() + 8)
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%m/%d %H:%M"))
+    plt.xticks(rotation=45)
+    ax.set_title("My City Temperature Dashboard")
+    ax.set_ylabel("Temperature (°F)")
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig("dashboard.png", dpi=150)
+    plt.close()
 # My camping location
 LATITUDE = 44.429764
 LONGITUDE = -110.584663
@@ -22,7 +59,7 @@ def get_historical_weather(lat, lon, start_date, end_date):
         "daily": "temperature_2m_max,temperature_2m_min",
         "timezone": "America/Los_Angeles"
     }
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params,timeout=20)
     return response.json()
 
 def get_forecast(lat, lon):
@@ -34,7 +71,7 @@ def get_forecast(lat, lon):
         "timezone": "America/Los_Angeles",
         "forecast_days": 7
     }
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params,timeout=20)
     return response.json()
 
 # Get the current temperature instead of daily min/max data 
@@ -47,7 +84,7 @@ def get_current_weather(lat, lon):
         "current": "temperature_2m",
         "timezone": "America/Denver"
     }
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params, timeout=20)
     return response.json()
 
 current_data = get_current_weather(LATITUDE, LONGITUDE)
@@ -56,15 +93,20 @@ current_time = current_data["current"]["time"]
 
 today = date.today()
 
-log_df = pd.DataFrame({                 # --- just added
+temp_c = current_temp
+
+temp_f = round(temp_c * 9/5 + 32, 1)
+log_df = pd.DataFrame({                
     "date": [str(today)],
     "time": [current_time],
-    "temperature_2m": [current_temp]
+    "temperature_2m": [temp_c],
+    "temp_f": [temp_f]
 })
 log_file = "daily_log.csv"
 log_df.to_csv(log_file, mode='a', header=not os.path.isfile(log_file), index=False)
 print(f"Logged current temperature: {current_temp} degrees C at {current_time}")
-
+generate_dashboard()
+raise SystemExit
 current_year = today.year
 
 # Collect historical data for the last 5 years
