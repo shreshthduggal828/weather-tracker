@@ -1,11 +1,7 @@
 import os
-os.environ['MPLBACKEND'] = 'Agg'
 import requests
 import pandas as pd
 from datetime import date
-import matplotlib
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import plotly.graph_objects as go
 
 def generate_dashboard(df):
