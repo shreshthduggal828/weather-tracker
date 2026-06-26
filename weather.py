@@ -98,7 +98,10 @@ log_df = pd.DataFrame({
 log_file = "daily_log.csv"
 log_df.to_csv(log_file, mode='a', header=not os.path.isfile(log_file), index=False)
 print(f"Logged current temperature: {current_temp} degrees C at {current_time}")
-generate_dashboard()
+df=pd.read_csv('daily_log.csv',skipinitialspace=True)
+df["datetime"] = pd.to_datetime(df["time"])    
+df = df.sort_values("datetime")                 
+generate_dashboard(df)          
 raise SystemExit
 current_year = today.year
 
